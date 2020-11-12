@@ -1,0 +1,33 @@
+(load "src/unsafe-ptr.carp")
+
+(system-include "pthread.h")
+(Project.config "cflag" "-pthread")
+
+(register-type Thread "pthread_t")
+(defmodule Thread
+  (deftemplate copy (Fn [(Ref Thread)] Thread) "pthread_t $NAME(pthread_t *ptr)" "$DECL {return *ptr;}")
+  (implements copy Thread.copy)
+
+  (deftemplate init (Fn [] Thread) "pthread_t $NAME()" "$DECL {pthread_t thread = 0; return thread;}")
+
+  (register create-c (Fn [(Ref Thread) (Ptr ()) (Ptr ()) (Ptr ())] Int) "pthread_create")
+
+  (sig create-from-handle (Fn [(Ref Thread) (Ref (Fn [] ()))] (Result Int Int)))
+  (defn create-from-handle [thread fun]
+    (let [error-code (create-c thread NULL (UnsafePtr.fn-ptr fun) (UnsafePtr.fn-env-ptr fun))]
+      (if (= 0 error-code)
+          (Result.Success error-code)
+          (Result.Error error-code))))
+
+  (sig create (Fn [(Ref (Fn [] ()))] (Result Thread Int)))
+  (defn create [fun]
+    (let [thread (init)]
+      (Result.map (create-from-handle &thread fun)
+                  &(fn [_] thread))))
+
+  (register exit (Fn [(Ptr ())] ()) "pthread_exit")
+
+  (register join-c (Fn [Thread (Ptr ())] Int) "pthread_join")
+  (defn join [thread] (join-c thread NULL))
+  (defn join-all [threads] (foreach [thread &threads] (ignore (Thread.join @thread)))))
+
