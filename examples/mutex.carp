@@ -1,0 +1,13 @@
+(load "../pthread.carp")
+
+(use-all Thread Result Array Mutex)
+
+(defn main []
+  (let-do [mutex &(Mutex.new [])
+           fun-access &(fn [arr]
+                           (push-back! arr (Int.random-between 0 10000)))
+           fun-thread &(fn [] (access mutex fun-access))]
+    (Random.seed)
+    (ignore (join-all (repeat 10 &(fn [] (unsafe-from-success (create fun-thread))))))
+    (access mutex &(fn [arr] (println* (str arr))))))
+

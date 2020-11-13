@@ -1,0 +1,65 @@
+(use Result)
+
+(defmodule PthreadLibUtils
+  (defn assert-success [result] (ignore (Result.unsafe-from-success result))))
+
+(register-type MutexHandle "pthread_mutex_t")
+(defmodule MutexHandle
+  (deftemplate copy (Fn [(Ref MutexHandle)] MutexHandle)
+                    "pthread_mutex_t $NAME(pthread_mutex_t *ptr)"
+                    "inline $DECL {return *ptr;}")
+  (implements copy MutexHandle.copy)
+
+  (deftemplate init (Fn [] MutexHandle)
+                    "pthread_mutex_t $NAME()"
+                    "inline $DECL {
+                      pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+                      return mutex;
+                    }")
+
+  (register create-c (Fn [(Ref MutexHandle) (Ptr ())] Int) "pthread_mutex_init")
+  
+  (sig create-from-handle (Fn [(Ref MutexHandle)] (Result Int Int)))
+  (defn create-from-handle [handle]
+    (let [error-code (create-c handle NULL)]
+      (if (= 0 error-code)
+          (Success error-code)
+          (Error error-code))))
+
+  (sig create (Fn [] (Result MutexHandle Int)))
+  (defn create []
+    (let [mutex (init)]
+      (map (create-from-handle &mutex)
+           &(fn [_] mutex))))
+
+  (register lock-c (Fn [(Ref MutexHandle)] Int) "pthread_mutex_lock")
+  (defn lock [mutex]
+    (let [error-code (lock-c mutex)]
+      (if (= 0 error-code)
+          (Success error-code)
+          (Error error-code))))
+
+  (register try-lock-c (Fn [(Ref MutexHandle)] Int) "pthread_mutex_trylock")
+  (defn try-lock [mutex]
+    (let [error-code (try-lock-c mutex)]
+      (if (= 0 error-code)
+          (Success error-code)
+          (Error error-code))))
+
+  (register unlock-c (Fn [(Ref MutexHandle)] Int) "pthread_mutex_unlock")
+  (defn unlock [mutex]
+    (let [error-code (unlock-c mutex)]
+      (if (= 0 error-code)
+          (Success error-code)
+          (Error error-code)))))
+
+(deftype (Mutex a) [mutex MutexHandle value a])
+(defmodule Mutex
+  (defn new [value] (Mutex.init (MutexHandle.init) value))
+
+  (sig access (Fn [(Ref (Mutex a)) (Ref (Fn [(Ref a)] ()))] ()))
+  (defn access [mutex fun]
+   (do
+    (PthreadLibUtils.assert-success (MutexHandle.lock (Mutex.mutex mutex)))
+    (~fun (Mutex.value mutex))
+    (PthreadLibUtils.assert-success (MutexHandle.unlock (Mutex.mutex mutex))))))

@@ -1,0 +1,9 @@
+(register-type Cond "pthread_cond_t")
+(defmodule Cond
+  (register init (Fn [] Cond) "Cond_init")
+  (register wait-c (Fn [(Ref Cond) (Ref MutexHandle)] Int) "pthread_cond_wait")
+  (defn wait [cond mutex]
+    (= (wait-c cond mutex) 0))
+  (register signal-c (Fn [(Ref Cond)] Int) "pthread_cond_signal")
+  (defn signal [cond]
+    (= (signal-c cond) 0)))
