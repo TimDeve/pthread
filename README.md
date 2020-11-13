@@ -1,4 +1,11 @@
-(load "../pthread.carp")
+# pthread
+
+A naive bindings for pthread in [Carp](https://github.com/carp-lang/Carp)
+
+## Example
+
+```clojure
+(load "git@github.com:TimDeve/pthread@v0.1.1")
 
 (use-all Thread Result Array)
 
@@ -10,4 +17,5 @@
     (Random.seed)
     (ignore (join-all (repeat 1000 &(fn [] (unsafe-from-success (create fun-thread))))))
     (Mutex.access mutex &(fn [arr] (println* (str arr))))))
+```
 

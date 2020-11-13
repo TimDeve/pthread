@@ -1,4 +1,4 @@
-(load "src/unsafe-ptr.carp")
+(load "./unsafe-ptr.carp")
 
 (system-include "pthread.h")
 (Project.config "cflag" "-pthread")
