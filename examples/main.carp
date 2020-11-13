@@ -2,12 +2,12 @@
 
 (use-all Thread Result Array)
 
-(defn main []
- (let-do [avalue 42
-          fun &(fn []
-                 (let-do [rand &(Int.random-between 0 1000000)]
-                  (System.sleep-micros @rand)
-                  (println* (fmt "avalue: %i, rand: %i" avalue @rand))))]
+(defn-do main []
   (Random.seed)
-  (join-all (repeat 10 &(fn [] (unsafe-from-success (create fun)))))))
+  (let [avalue 42
+        fun &(fn []
+               (let-do [rand &(Int.random-between 0 10000)]
+                (System.sleep-micros @rand)
+                (println* (fmt "avalue: %i, rand: %i" avalue @rand))))]
+   (ignore (join-all (repeat 10 &(fn [] (unsafe-from-success (create fun))))))))
 
