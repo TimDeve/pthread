@@ -1,9 +1,33 @@
 (register-type Cond "pthread_cond_t")
 (defmodule Cond
-  (register init (Fn [] Cond) "Cond_init")
+  (deftemplate init (Fn [] Cond)
+                    "pthread_cond_t $NAME()"
+                    "inline $DECL {
+                      pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+                      return cond;
+                    }")
+
   (register wait-c (Fn [(Ref Cond) (Ref MutexHandle)] Int) "pthread_cond_wait")
   (defn wait [cond mutex]
-    (= (wait-c cond mutex) 0))
+   (let [error-code (wait-c cond mutex)]
+     (if (= 0 error-code)
+         (Success error-code)
+         (Error error-code))))
+
   (register signal-c (Fn [(Ref Cond)] Int) "pthread_cond_signal")
   (defn signal [cond]
-    (= (signal-c cond) 0)))
+   (let [error-code (signal-c cond)]
+     (if (= 0 error-code)
+         (Success error-code)
+         (Error error-code)))))
+
+(deftype (CondMutex a) [mutex MutexHandle condition Cond value a])
+(defmodule CondMutex
+  (defn new [value] (CondMutex.init (MutexHandle.init) (Cond.init) value))
+
+  (defn access [cond-mutex fun]
+   (do
+    (PthreadLibUtils.assert-success (MutexHandle.lock (mutex cond-mutex)))
+    (let-do [result (~fun (value cond-mutex) (condition cond-mutex) (mutex cond-mutex))]
+      (PthreadLibUtils.assert-success (MutexHandle.unlock (mutex cond-mutex)))
+      result))))

@@ -1,0 +1,55 @@
+(load "https://www.github.com/TimDeve/fifo-carp@v0.1.1")
+(load "../pthread.carp")
+
+(use-all Result Array Maybe)
+
+(defn http-res []
+  "HTTP/1.1 200 OK
+Content-Length: 5
+Content-Type: text/plain
+Connection: Closed
+
+Hello")
+
+(defn push-client-sock [mutex client-sock]
+  (CondMutex.access
+    mutex
+    &(fn [queue condition mutex]
+      (do
+        (FifoSocket.push queue client-sock)
+        (ignore (unsafe-from-success (Cond.signal condition)))))))
+
+(defn pop-client-sock [mutex]
+  (CondMutex.access
+    mutex
+    &(fn [queue condition mutex]
+      (do
+        (while (FifoSocket.is-empty? queue)
+          (ignore (unsafe-from-success (Cond.wait condition mutex))))
+        (unsafe-from (FifoSocket.pop queue))))))
+
+(defn-do serve-client [queue]
+  (let [res (http-res)]
+    (while true
+      (let-do [client (pop-client-sock queue)]
+        (Socket.send &client res)
+        (Socket.close client)))))
+
+(defn setup-worker-threads [thread-count callback]
+  (ignore
+   (Array.repeat thread-count 
+                 &(fn [] (unsafe-from-success (Thread.create callback))))))
+
+(defn-do serve [ip port]
+  (Socket.with-server server ip port
+    (let-do  [queue &(CondMutex.new (FifoSocket.init))
+              callback &(fn [] (serve-client queue))]
+      (setup-worker-threads 8 callback)
+      (Socket.listen &server)
+      (println* (fmt "Listening on %s:%i" ip port))
+      (while true
+        (push-client-sock queue (Socket.accept &server))))))
+
+(defn main []
+  (serve "localhost" 8080))
+
