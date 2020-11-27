@@ -1,3 +1,6 @@
+(system-include "pthread.h")
+(Project.config "cflag" "-pthread")
+
 (load "src/mutex.carp")
 (load "src/cond.carp")
 (load "src/thread.carp")

@@ -1,8 +1,3 @@
-(load "./unsafe-ptr.carp")
-
-(system-include "pthread.h")
-(Project.config "cflag" "-pthread")
-
 (use-all Result Array)
 
 (register-type Thread "pthread_t")
@@ -22,8 +17,8 @@
   (defn create-from-handle [thread fun]
     (let [error-code (create-c thread
                                NULL
-                               (UnsafePtr.fn-ptr fun)
-                               (UnsafePtr.fn-env-ptr fun))]
+                               (Function.unsafe-ptr fun)
+                               (Function.unsafe-env-ptr fun))]
       (if (= 0 error-code)
           (Success error-code)
           (Error error-code))))

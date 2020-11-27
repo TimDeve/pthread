@@ -1,4 +1,0 @@
-(defmodule UnsafePtr
-  (deftemplate fn-ptr (Fn [(Ref a)] (Ptr ())) "void* $NAME($a *fn)" "$DECL { return fn->callback; }")
-  (deftemplate fn-env-ptr (Fn [(Ref a)] (Ptr ())) "void* $NAME($a *fn)" "$DECL { return fn->env; }")
-  (deftemplate to-void-ptr (Fn [(Ref a)] (Ptr ())) "void* $NAME($a *a)" "$DECL { return a; }"))
